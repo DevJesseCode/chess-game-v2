@@ -4,8 +4,8 @@ const dimension = Math.round(
     Math.min(window.innerHeight, window.innerWidth) * 0.9 - 16
 );
 const squareSize = 0.125 * dimension;
-const isMobile = navigator.userAgentData.toJSON().mobile
-const chessboard = [
+const isMobile = navigator.userAgentData?.toJSON().mobile
+let chessboard = [
     ["br", "bh", "bb", "bq", "bk", "bb", "bh", "br"], // black generals
     [...new Array(8).fill("bp")], // black pawns
     // ...new Array(4).fill([...new Array(8).fill("")]), // approach has been scrapped for duplication along columns

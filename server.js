@@ -1,7 +1,7 @@
 const http = require("http")
 const fs = require("fs").promises
 const path = require("path")
-const verify = require("./dependencies/verify.js")
+const checkMove = require("./dependencies/checkmove.js")
 const port = process.argv[3] || process.env.PORT || 8080
 const wd = path.join(process.cwd(), process.argv[2] || "")
 const mimeMap = {
@@ -15,27 +15,20 @@ const mimeMap = {
 	".png": "image/png",
 	".svg": "image/svg+xml"
 }
-const pieceMap = {
-	r: "rook",
-	h: "knight",
-	b: "bishop",
-	k: "king",
-	q: "queen",
-	p: "pawn"
-}
 const requestListener = function (req, res) {
-	console.log(req.socket.remoteAddress)
+	// console.log(req.socket.remoteAddress)
 	let ext = ""
 	req.url === "/" && (req.url = "/index.html")
 	ext = path.extname(req.url)
 	if (req.url.startsWith("/verify")) {
+		const startTime = Date.now()
 		const options = {}
 		const optionsArr = req.url.split("?")[1].split("&").map(opt => opt.split("="))
 		for (let i = 0; i < optionsArr.length; i++) {
 			options[optionsArr[i][0]] = JSON.parse(decodeURI(optionsArr[i][1]))
 		}
 		const { board, fx, fy, tx, ty } = options
-		const moveData = verify[pieceMap[options.board[fy][fx][1]]](board, fx, fy, tx, ty)
+		const moveData = checkMove.verify[checkMove.pieceMap[options.board[fy][fx][1]]](board, fx, fy, tx, ty)
 		let response = {}
 		res.setHeader("Content-Type", "application/json")
 		res.writeHead(200)
@@ -43,7 +36,7 @@ const requestListener = function (req, res) {
 			response = {
 				piece: {
 					camp: options.board[fy][fx][0] === "w" ? "white" : "black",
-					type: pieceMap[options.board[fy][fx][1]]
+					type: checkMove.pieceMap[options.board[fy][fx][1]]
 				},
 				move: {
 					from: { row: fy, col: fx, pos: [ fy, fx ] },
@@ -53,6 +46,8 @@ const requestListener = function (req, res) {
 					old: board,
 					new: moveData.board
 				},
+				check: checkMove.inCheck(moveData.board),
+				// checkmate: checkMove.testCheckmate(moveData.board),
 				special: moveData.special || {},
 				valid: true
 			}
@@ -61,7 +56,7 @@ const requestListener = function (req, res) {
 			response = {
 				piece: {
 					camp: options.board[fy][fx][0] === "w" ? "white" : "black",
-					type: pieceMap[options.board[fy][fx][1]]
+					type: checkMove.pieceMap[options.board[fy][fx][1]]
 				},
 				move: {
 					from: { row: fy, col: fx, pos: [ fy, fx ] },
@@ -71,11 +66,13 @@ const requestListener = function (req, res) {
 					old: board,
 					new: moveData.board
 				},
+				check: checkMove.inCheck(moveData.board),
 				special: moveData.special || {},
 				valid: false
 			}
 			res.end(JSON.stringify(response))
 		}
+		console.log(`Finished move checking in ${Date.now() - startTime}ms`)
 		return true
 	}
 	console.log(`Started loading ${req.url} (${mimeMap[ext]})`)
